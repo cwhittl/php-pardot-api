@@ -12,14 +12,17 @@ namespace Pardot;
 class Config
 {
     // private instance variables
-    private $email;
-    private $password;
-    private $userkey; // found here: https://pi.pardot.com/account
+    //private $email;
+    //private $password;
+    //private $userkey; // found here: https://pi.pardot.com/account
     private $connection = 'cURL';
     private $debug = false;// echos debug info to the screen
     private $logging = false; // turns file based debug info logging on/off
-    private $logfile = 'pardot.log';// logs debug info to file. If this is empty, debug info will be logged in the PHP error log
-    private $apikeyfile = "/tmp/pardot_api_key";
+    //private $logfile = 'pardot.log';// logs debug info to file. If this is empty, debug info will be logged in the PHP error log
+    //private $apikeyfile = "/tmp/pardot_api_key";
+
+    private $authorization;
+    private $pardot_business_unit_id;
 
     function __construct($config_array)
     {
