@@ -75,19 +75,28 @@ class API
     protected function __construct($config)
     {
         // store initialization values
+        /*$this->email = $config->getEmail();
+        $this->password = $config->getPassword();
+        $this->connection = $config->getConnection();
+        $this->debug = $config->getDebug();
+        $this->logging = $config->getLogging();
+        $this->logfile = $config->getLogfile();*/
+
         $this->connection = $config->getConnection();
         $this->authorization = $config->getAuthorization();
         $this->pardot_business_unit_id = $config->getPardot_business_unit_id();
 
         $this->headers = [
             'Authorization: '.$this->authorization,
-            'Pardot-Business-Unit-Id: ' .$this->pardot_business_unit_id
+            'Pardot-Business-Unit-Id: ' .$this->pardot_business_unit_id,
+            //'Content-Type:application/json'
         ];
 
 
         // set default post fields
         $this->postFields = array(
          'format' => 'json',
+         /*'user_key' => $config->getUserKey()*/
         );
 
         // try to read api_key from file
@@ -212,6 +221,7 @@ class API
         $headers = $this->headers;
 
         // do request and return
+        //dump('makeRequest');
         return $this->makeRequest($url, $postFields, $headers);
     }
 
@@ -257,12 +267,19 @@ class API
         // try api request
         $resp = $this->sendPostRequest($url, $postFields, $headers);
 
+        info('==========');
+        info('$resp', ['$resp' => print_r($resp, true)]);
+
+        //dump('resp');
+        //dump($resp);
+
         // return if response is invalid
         if (! $resp['success']) {
             return $returnStructure;
 
         } else {
             // if response is successful, return. Else if api_key expired, authenticate and try again
+            //dump($resp);
 
             if ($resp['resp_decoded']->{'@attributes'}->stat == self::STAT_SUCCESS) {
                 // update return structure
@@ -300,8 +317,9 @@ class API
                     return $returnStructure;
                 }
 
+            }else {
+                $returnStructure['error'] = $resp['resp_decoded']->{'@attributes'}->err_code;
             }
-
             // should never get here
             return $returnStructure;
         }
