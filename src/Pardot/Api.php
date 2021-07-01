@@ -267,8 +267,8 @@ class API
         // try api request
         $resp = $this->sendPostRequest($url, $postFields, $headers);
 
-        info('==========');
-        info('$resp', ['$resp' => print_r($resp, true)]);
+        //info('==========');
+        //info('$resp', ['$resp' => print_r($resp, true)]);
 
         //dump('resp');
         //dump($resp);
