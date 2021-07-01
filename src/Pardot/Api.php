@@ -1,5 +1,7 @@
 <?php namespace Pardot;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Class API
  *
@@ -40,15 +42,20 @@ class API
     const OPR_QUERY = 'query';
 
     // private instance variables
-    private $email;
-    private $password;
+    //private $email;
+    //private $password;
     private $connection;
     private $debug;
     private $logging;
     private $logfile;
 
+    private $authorization;
+    private $pardot_business_unit_id;
+
     // public instance variables
     public $postFields;
+
+    public $headers;
 
     /**
      * Singleton instance generator
@@ -70,21 +77,32 @@ class API
     protected function __construct($config)
     {
         // store initialization values
-        $this->email = $config->getEmail();
+        /*$this->email = $config->getEmail();
         $this->password = $config->getPassword();
         $this->connection = $config->getConnection();
         $this->debug = $config->getDebug();
         $this->logging = $config->getLogging();
-        $this->logfile = $config->getLogfile();
+        $this->logfile = $config->getLogfile();*/
+
+        $this->connection = $config->getConnection();
+        $this->authorization = $config->getAuthorization();
+        $this->pardot_business_unit_id = $config->getPardot_business_unit_id();
+
+        $this->headers = [
+            'Authorization: '.$this->authorization,
+            'Pardot-Business-Unit-Id: ' .$this->pardot_business_unit_id,
+            //'Content-Type:application/json'
+        ];
+
 
         // set default post fields
         $this->postFields = array(
          'format' => 'json',
-         'user_key' => $config->getUserKey()
+         /*'user_key' => $config->getUserKey()*/
         );
 
         // try to read api_key from file
-        $this->api_key_file = $config->getAPIKeyFile();
+        /*$this->api_key_file = $config->getAPIKeyFile();
         if (file_exists($this->api_key_file)) {
             $this->postFields['api_key'] = file_get_contents($this->api_key_file);
         }else{
@@ -92,12 +110,12 @@ class API
                 $this->api_key_file,
                 ""
             );
-        }
+        }*/
 
         // authenticate or exit here
-        if (empty($this->postFields['api_key']) && ! $this->authenticate() ) {
+        /*if (empty($this->postFields['api_key']) && ! $this->authenticate() ) {
             die('FATAL Pardot API Authentication Failed!');
-        }
+        }*/
     }
 
     /**
@@ -202,8 +220,11 @@ class API
             $postFields = array_merge($this->postFields, $parameters);
         }
 
+        $headers = $this->headers;
+
         // do request and return
-        return $this->makeRequest($url, $postFields);
+        //dump('makeRequest');
+        return $this->makeRequest($url, $postFields, $headers);
     }
 
     /**
@@ -237,7 +258,7 @@ class API
      * @param  $postFields
      * @return array
      */
-    public function makeRequest($url, $postFields = null)
+    public function makeRequest($url, $postFields = null, $headers = null)
     {
         // setup default return structure
         $returnStructure = array(
@@ -246,7 +267,13 @@ class API
         );
 
         // try api request
-        $resp = $this->sendPostRequest($url, $postFields);
+        $resp = $this->sendPostRequest($url, $postFields, $headers);
+
+        //info('==========');
+        //info('$resp', ['$resp' => print_r($resp, true)]);
+
+        //dump('resp');
+        //dump($resp);
 
         // return if response is invalid
         if (! $resp['success']) {
@@ -254,6 +281,8 @@ class API
 
         } else {
             // if response is successful, return. Else if api_key expired, authenticate and try again
+            //dump($resp);
+
             if ($resp['resp_decoded']->{'@attributes'}->stat == self::STAT_SUCCESS) {
                 // update return structure
                 $returnStructure['success'] = true;
@@ -274,7 +303,7 @@ class API
                 $postFields = array_merge($postFields, $this->postFields);
 
                 // try api request again
-                $resp = $this->sendPostRequest($url, $postFields);
+                $resp = $this->sendPostRequest($url, $postFields, $headers);
 
                 // if response is successful, return
                 if ($resp['resp_decoded']->{'@attributes'}->stat == self::STAT_SUCCESS) {
@@ -290,8 +319,11 @@ class API
                     return $returnStructure;
                 }
 
+            }else {
+                info('has error token ==========');
+                Log::error('For Ruslan. Pardot token has expired. Alarm? you need fixing');
+                $returnStructure['error'] = $resp['resp_decoded']->{'@attributes'}->err_code;
             }
-
             // should never get here
             return $returnStructure;
         }
@@ -364,7 +396,7 @@ class API
      * @param  array  $postFields - Post fields in array form
      * @return array return structure
      */
-    private function sendPostRequest($url, $postFields = null)
+    private function sendPostRequest($url, $postFields = null, $headers = null)
     {
         // setup default return structure
         $returnStructure = array(
@@ -377,6 +409,10 @@ class API
         // use default post fields if none are passed in
         if (is_null($postFields)) {
             $postFields = $this->postFields;
+        }
+
+        if(is_null($headers)){
+            $headers = $this->headers;
         }
 
         // convert boolean to string
@@ -405,6 +441,7 @@ class API
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_POST, count($postFields));
             curl_setopt($ch, CURLOPT_POSTFIELDS, $postFieldsString);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
             // execute request
@@ -438,7 +475,6 @@ class API
         case 'json':
             // decode JSON string
             $dataObj = json_decode($returnStructure['resp_body']);
-
             // update return structure
             if (! is_null($dataObj)) {
                 $returnStructure['success'] = true;
