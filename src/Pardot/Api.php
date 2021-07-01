@@ -1,5 +1,7 @@
 <?php namespace Pardot;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Class API
  *
@@ -318,6 +320,8 @@ class API
                 }
 
             }else {
+                info('has error token ==========');
+                Log::error('For Ruslan. Pardot token has expired. Alarm? you need fixing');
                 $returnStructure['error'] = $resp['resp_decoded']->{'@attributes'}->err_code;
             }
             // should never get here
